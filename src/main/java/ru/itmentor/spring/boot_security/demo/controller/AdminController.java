@@ -1,89 +1,68 @@
 package ru.itmentor.spring.boot_security.demo.controller;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import ru.itmentor.spring.boot_security.demo.model.Role;
 import ru.itmentor.spring.boot_security.demo.model.User;
+import ru.itmentor.spring.boot_security.demo.service.RoleService;
 import ru.itmentor.spring.boot_security.demo.service.UserService;
 
-import java.security.Principal;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-@Controller
-@RequestMapping("/admin/")
-public class AdminController {
 
-    private UserService userService;
+import java.util.stream.Collectors;
+
+@Controller
+@RequestMapping
+public class AdminController {
+    private final UserService userService;
+    private final RoleService roleService;
 
     @Autowired
-    public AdminController(UserService userService) {
+    public AdminController(UserService userService, RoleService roleService) {
         this.userService = userService;
+        this.roleService = roleService;
     }
 
-    public AdminController() {
-    }
-
-    @GetMapping("")
-    public String AdminPage(Model model, Principal principal) {
-        User user = (User) userService.loadUserByUsername(principal.getName());
-        List<User> users = userService.listUsers();
-        model.addAttribute("users", users);
+    @GetMapping("/admin")
+    public String showAdminPage(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("users", userService.getAllUsers());
         model.addAttribute("user", user);
-        model.addAttribute("newUser", new User());
-        return "admin";
+        model.addAttribute("roles", roleService.getAllRoles());
+        return "admin/adminPage";
     }
 
-    @PostMapping("addUser")
-    public String saveUser(@ModelAttribute("user") User user,
-                           @RequestParam(value = "checkRoles", required = false) String userRole) {
-        user.setRoles(setRolesInController(userRole));
-        userService.addUser(user);
-        return "redirect:";
+    @GetMapping("/add")
+    public String newUserPage(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("user", user);
+        model.addAttribute("roles", roleService.getAllRoles());
+        return "admin/newUser";
     }
 
-    @PostMapping("delete/{id}")
-    public String deleteUser(@PathVariable long id) {
-        userService.deleteUser(id);
-        return "redirect:/admin/";
+    @PostMapping("/new")
+    public String createUser(@ModelAttribute("user") User user) {
+        getUserRoles(user);
+        userService.saveUser(user);
+        return "redirect:/admin";
     }
 
-    @PostMapping("edit/{id}")
-    public String editUser(@PathVariable long id,
-                           @ModelAttribute("newUser") User user,
-                           @RequestParam(value = "editFirstname", required = false) String firstname,
-                           @RequestParam(value = "editLastname", required = false) String lastname,
-                           @RequestParam(value = "editAge", required = false) int age,
-                           @RequestParam(value = "editEmail", required = false) String email,
-                           @RequestParam(value = "editPassword", required = false) String password,
-                           @RequestParam(value = "checkRoles", required = false) String checkRoles) {
-        user.setRoles(setRolesInController(checkRoles));
-        user.setId(id);
-        user.setFirstName(firstname);
-        user.setLastName(lastname);
-        user.setAge(age);
-        user.setEmail(email);
-        if (password.isEmpty()) {
-            user.setPassword(userService.getUserById(id).getPassword());
-        } else {
-            user.setPassword(password);
-        }
+    @PutMapping("/{id}/update")
+    public String updateUser(@ModelAttribute("user") User user, Model model) {
+        model.addAttribute("roles", roleService.getAllRoles());
+        getUserRoles(user);
         userService.updateUser(user);
-        return "redirect:/admin/";
+        return "redirect:/admin";
     }
 
-    public Set<Role> setRolesInController(String checkRoles) {
-        Set<Role> roles = new HashSet<>();
-        if (checkRoles != null) {
-            if (checkRoles.contains("ADMIN")) {
-                roles.add(new Role(1L, "ADMIN"));
-            }
-            if (checkRoles.contains("USER")) {
-                roles.add(new Role(2L, "USER"));
-            }
-        }
-        return roles;
+    @DeleteMapping("/{id}/delete")
+    public String deleteUser(@PathVariable("id") long id) {
+        userService.deleteUser(id);
+        return "redirect:/admin";
+    }
+
+    private void getUserRoles(User user) {
+        user.setRoles(user.getRoles().stream()
+                .map(role -> roleService.getRole(role.getUserRole()))
+                .collect(Collectors.toSet()));
     }
 }
-

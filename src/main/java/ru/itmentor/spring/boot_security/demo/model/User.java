@@ -1,27 +1,28 @@
 package ru.itmentor.spring.boot_security.demo.model;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.persistence.*;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
 public class User implements UserDetails {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "firstName")
-    private String firstName;
+    @Column(name = "name")
+    private String name;
 
-    @Column(name = "lastName")
-    private String lastName;
+    @Column(name = "surname")
+    private String surname;
 
     @Column(name = "age")
     private int age;
@@ -29,40 +30,30 @@ public class User implements UserDetails {
     @Column(name = "email")
     private String email;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    private Set<Role> roles;
+    @Column(name = "login")
+    private String login;
 
     @Column(name = "password")
     private String password;
 
-    public User(
-            Long id,
-            String firstName,
-            String lastName,
-            int age,
-            String email,
-            Set<Role> roles,
-            String password) {
-        this.id = id;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.age = age;
-        this.email = email;
-        this.roles = roles;
-        this.password = password;
-    }
-
-    public User(
-            String firstName, String lastName, int age, String email, Set<Role> roles, String password) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.age = age;
-        this.email = email;
-        this.roles = roles;
-        this.password = password;
-    }
+    @ManyToMany(fetch = FetchType.LAZY)
+    @Fetch(FetchMode.JOIN)
+    @JoinTable(name = "users_roles",
+            joinColumns = @JoinColumn(name = "userid"),
+            inverseJoinColumns = @JoinColumn(name = "roleid"))
+    private Set<Role> roles = new HashSet<>();
 
     public User() {
+    }
+
+    public User(String name, String surname, int age, String email, String login, String password, Set<Role> roles) {
+        this.name = name;
+        this.surname = surname;
+        this.age = age;
+        this.email = email;
+        this.login = login;
+        this.password = password;
+        this.roles = roles;
     }
 
     public Long getId() {
@@ -73,20 +64,20 @@ public class User implements UserDetails {
         this.id = id;
     }
 
-    public String getFirstName() {
-        return firstName;
+    public String getName() {
+        return name;
     }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public String getLastName() {
-        return lastName;
+    public String getSurname() {
+        return surname;
     }
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
+    public void setSurname(String surname) {
+        this.surname = surname;
     }
 
     public int getAge() {
@@ -105,43 +96,26 @@ public class User implements UserDetails {
         this.email = email;
     }
 
-    public Set<Role> getRoles() {
-        return roles;
+    public String getLogin() {
+        return login;
     }
 
-    public String getRolesString() {
-        return getRoles().stream().map(Object::toString).collect(Collectors.joining(", "));
-    }
-
-    public void setRoles(Set<Role> roles) {
-        this.roles = roles;
+    public void setLogin(String login) {
+        this.login = login;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return getRoles();
+        return roles;
     }
 
-    @Override
     public String getPassword() {
         return password;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
     @Override
     public String getUsername() {
-        return email;
-    }
-
-    public boolean isAdmin() {
-        return getRolesString().contains("ADMIN");
-    }
-
-    public boolean isUser() {
-        return getRolesString().contains("USER");
+        return login;
     }
 
     @Override
@@ -164,27 +138,26 @@ public class User implements UserDetails {
         return true;
     }
 
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(Set<Role> roles) {
+        this.roles = roles;
+    }
+
     @Override
     public String toString() {
-        return "User{"
-                + "id="
-                + id
-                + ", firstName='"
-                + firstName
-                + '\''
-                + ", lastName='"
-                + lastName
-                + '\''
-                + ", age="
-                + age
-                + ", email='"
-                + email
-                + '\''
-                + ", roles="
-                + roles
-                + ", password='"
-                + password
-                + '\''
-                + '}';
+        return "User{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", surname='" + surname + '\'' +
+                ", age=" + age +
+                ", email='" + email + '\'' +
+                '}';
     }
 }
